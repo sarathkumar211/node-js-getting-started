@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Scheduler</title>
+	
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.8/angular.min.js"></script>
+<script type="text/javascript"  src="https://www.google.com/jsapi?autoload={'modules':[{'name':'visualization','version':'1','packages':['timeline']}]}"></script>
+
+    <style>
+		#grad {	  background: #025cb0; 	  background: -webkit-linear-gradient(left top, #025cb0, #2e81fa);	  background: -o-linear-gradient(bottom right, #025cb0, #2e81fa);	  background: -moz-linear-gradient(bottom right, #025cb0, #2e81fa); 	  background: linear-gradient(to bottom right, #025cb0, #2e81fa) ;}
+    </style>
+
+	
+
+
+<script>
+var googleChart = googleChart || angular.module("google-chart", []);
+
+googleChart.directive("googleChart", function () {
+    return {
+        restrict: "A",
+        link: function ($scope, $elem, $attr) {
+            var dt = $scope[$attr.ngModel].dataTable;
+
+            var options = {};
+            if ($scope[$attr.ngModel].title)
+                options.title = $scope[$attr.ngModel].title;
+            console.log($scope[$attr.ngModel] + ' \t envirName= ', $attr.googleChart + ' Ele \t ' + $elem[0]);
+            var googleChart = new google.visualization[$attr.googleChart]($elem[0]);
+            googleChart.draw(dt, options)
+        }
+    }
+});
+
+google.setOnLoadCallback(function () {
+  //  angular.bootstrap(document.body, ['scheduleApp']);
+});
+google.load('visualization', '1', { packages: ['corechart'] });
+
+var app = app || angular.module("scheduleApp", ["google-chart"]);
+app.controller('scheduleCtrl', function($scope) {
+
+    $scope.count =0;
+	$scope.rmvindex=0;
+	$scope.start='00:00';
+	$scope.end='11:59';
+	$scope.scr=[];
+    $scope.schedulearray=[[ 'Schedule Timeline',   new Date(0,0,0,0,0,0), new Date(0,0,0,11,59,0) ]];
+ // $scope.schedulearray.push([ 'Schedule 000',   new Date(0,0,0,11,0,0), new Date(0,0,0,11,59,0) ]);
+	
+	if(localStorage.getItem('schedulelist')!==null){
+	      $scope.scr = JSON.parse(localStorage.getItem('schedulelist'));
+
+		  angular.forEach(JSON.parse(localStorage.getItem('schedulelist')),function(itm){
+		  $scope.schedulearray.push([itm.t,   new Date(0,0,0,itm.ssh,itm.ssm,0), new Date(0,0,0,itm.eeh,itm.eem,0) ]);
+		  $scope.count =itm.count;
+		 });
+
+	}
+
+	
+	$scope.drawChart= function () {
+
+		   $scope.timechart = new google.visualization.Timeline(document.getElementById('chart_timeline'));
+		   $scope.timedata = new google.visualization.DataTable();
+		   
+			$scope.timedata.addColumn({ type: 'string', id: 'Name' });
+			$scope.timedata.addColumn({ type: 'date', id: 'Start' });
+			$scope.timedata.addColumn({ type: 'date', id: 'End' });
+		
+           $scope.timedata.addRows( $scope.schedulearray);
+	       $scope.timechart.draw($scope.timedata);
+
+	};
+	
+    $scope.drawChart();
+	
+    $scope.scheduleAdd = function() {
+	$scope.grt = false;
+		$scope.ss={};
+	$scope.ee={};
+	$scope.ss.h = ($scope.start.split(':')[0]); 
+	 $scope.ss.m = ($scope.start.split(':')[1]); 
+	 $scope.ee.h = ($scope.end.split(':')[0]); 
+	 $scope.ee.m = ($scope.end.split(':')[1]); 
+	 
+	 $scope.grt = ($scope.ee.h >= $scope.ss.h) && ( $scope.ee.m <= 59 && $scope.ss.m <=59) && ( $scope.ee.h <= 11 && $scope.ss.h <=11) ? true:false;
+	
+	if($scope.grt){
+	$scope.errmsg="";
+
+	 
+	 $scope.count =  $scope.count + 1;
+     $scope.schedulearray.push([ 'Schedule '+$scope.count,      new Date(0,0,0, $scope.ss.h, $scope.ss.m,0), new Date(0,0,0, $scope.ee.h, $scope.ee.m,0) ]);
+	 $scope.scr.push({"t":'Schedule '+$scope.count
+	 ,"ssh":$scope.ss.h
+	 ,"ssm":$scope.ss.m  
+	 ,"eeh":$scope.ee.h
+	 ,"eem":$scope.ee.m  
+     ,"count":	$scope.count });
+ 
+	 $scope.drawChart( ) ;
+	 localStorage.setItem('schedulelist', JSON.stringify($scope.scr));
+	 }else{
+	 $scope.errmsg="Invalid Start and End Time";
+	 }
+    };
+
+	 $scope.clearList = function() {
+	 localStorage.clear();
+	  $scope.schedulearray=[[ 'Schedule Timeline',   new Date(0,0,0,0,0,0), new Date(0,0,0,11,59,0) ]];
+	 $scope.drawChart( ) ;
+	 };
+    $scope.scheduleRemove = function() {
+		for (var i = $scope.schedulearray.length - 1; i >= 0; i--) {
+			if ($scope.schedulearray[i][0] == 'Schedule '+$scope.rmvindex) {
+			$scope.schedulearray.splice(i, 1);
+			}
+		}
+	  $scope.drawChart();
+	   $scope.scr=[];
+	   
+	   angular.forEach(JSON.parse(localStorage.getItem('schedulelist')),function(itm){
+	   
+	  if(itm.t != 'Schedule '+$scope.rmvindex ){
+	 $scope.scr.push({"t":itm.t
+	 ,"ssh":itm.ssh
+	 ,"ssm":itm.ssm  
+	 ,"eeh":itm.eeh
+	 ,"eem":itm.eem 
+     ,"count":	itm.count });
+	 }
+
+		 });
+		 
+	   localStorage.setItem('schedulelist', JSON.stringify($scope.scr));
+
+    };
+});
+
+
+</script>
+
+</head>
+<body ng-app="scheduleApp" ng-controller="scheduleCtrl">
+
+    <div class="navbar navbar-fixed-top" id="grad" style="" role="navigation">
+        <div class="container">
+            <div class="navbar-header">
+                <a class="navbar-brand">
+                    <div style="color:white;font-size:25px;">Scheduler</div>
+                </a>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="container " style="max-height: calc(100%-120px;) ;  margin-top: 60px;">
+        <div class="row">
+            <div class="col-md-6" style="border:1px solid gray;height:150px;">
+                <div id="grad" style="height:30px;color:#ffffff;margin-left: -15px;margin-right: -15px;padding-left: 10px;padding-top: 5px;">
+                    Add Schedule
+                </div>
+                <br/>
+                <form ng-submit="scheduleAdd()">
+                    <div class="form-group">
+                        <div class="col-xs-3">
+                            <label for="ex1">Start Time</label>
+                            <input class="form-control" id="ex1" type="text" ng-model="start" size="5" placeholder="00:00">
+                        </div>
+                        <div class="col-xs-3">
+                            <label for="ex1">End Time</label>
+                            <input class="form-control" id="ex1" type="text" ng-model="end" size="5" placeholder="00:00">
+                        </div>
+                        <div class="col-xs-3">
+                            <label for="ex1"> </label>
+                            <input type="submit" value="Add" class="btn btn-primary form-control" id="ex1">
+                        </div>
+                    </div>
+
+
+                </form>
+                <br/>
+                <span style="color:red;">{{errmsg}}</span>
+
+            </div>
+
+            <div class="col-md-6" style="border:1px solid gray;height:150px;">
+                <div id="grad" style="height:30px;color:#ffffff;margin-left: -15px;margin-right: -15px;padding-left: 10px;padding-top: 5px;">
+                    Remove Schedule
+                </div>
+                <br/>
+                <form ng-submit="scheduleRemove()">
+
+                    <div class="form-group">
+                        <div class="col-xs-3">
+                            <label for="ex1">Schedule #</label>
+                            <input class="form-control" id="ex1" type="number" ng-model="rmvindex" size="5" placeholder="0">
+                        </div>
+
+
+                        <div class="col-xs-3">
+                            <label for="ex1"></label>
+                            <input type="submit" value="Remove" class="btn btn-primary form-control" id="ex1">
+
+
+                        </div>
+                        <div class="col-xs-3">
+                            <label for="ex1"></label>
+                            <input type="button" value="Remove All" class="btn btn-primary form-control" id="ex1" ng-click="clearList()">
+
+
+                        </div>
+                    </div>
+
+                </form>
+
+
+
+
+                <br/>
+                <br/>
+
+            </div>
+
+
+            <div class="col-md-12" style="border:1px solid gray;">
+
+                <div id="grad" style="height:30px;color:#ffffff;margin-left: -15px;margin-right: -15px;padding-left: 10px;padding-top: 5px;">
+                    Schedule Timeline
+                </div>
+                <br/>
+                <div id="chart_timeline" class="chart col-md-12" style="height:350px;" ></div>
+
+            </div>
+
+        </div>
+        <div class="footer navbar-fixed-bottom col-md-12" id="grad">
+            <span style="color:white;float:left;padding-top:10px;">Scheduler</span>
+            <span style="color:white;float:right;padding-top:10px;">powered by Scheduler</span>
+        </div>
+
+</body>
+</html>
